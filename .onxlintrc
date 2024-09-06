@@ -1,0 +1,5 @@
+rules:
+  - name: 'unused-variable'
+    severity: 'warning'
+  - name: 'no-unused-expression'
+    severity: 'error'
