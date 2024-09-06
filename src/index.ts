@@ -7,7 +7,7 @@ import pg from "pg";
 
 config();
 
-const PORT = process.env.PORT;
+const PORT = 3000;
 
 // DB connection
 const { Pool } = pg;
