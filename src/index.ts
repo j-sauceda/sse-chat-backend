@@ -57,11 +57,19 @@ app.use((req, res, next) => {
 app.post("/channel", async (req, res) => {
   try {
     const { name } = req.body;
+
+    if (!name) {
+      console.error("Missing required name");
+      res.status(400).json({
+        msg: "Missing required argument name",
+      });
+    }
+
     const query = `
-      INSERT INTO channels (name)
-      VALUES ($1)
-      RETURNING *;
-      `;
+        INSERT INTO channels (name)
+        VALUES ($1)
+        RETURNING *;
+        `;
 
     const results = await pool.query(query, [name]);
     const { id } = results.rows[0];
@@ -95,21 +103,24 @@ app.get("/channels", async (req, res) => {
 app.delete("/channel/:channelId", async (req, res) => {
   try {
     const channelId = req.params.channelId;
-    let query = `
+
+    if (channelId) {
+      let query = `
       DELETE FROM messages
       WHERE channelid = $1;
       `;
 
-    await pool.query(query, [channelId]);
+      await pool.query(query, [channelId]);
 
-    query = `
+      query = `
       DELETE FROM channels
       WHERE id = $1;
       `;
 
-    await pool.query(query, [channelId]);
+      await pool.query(query, [channelId]);
 
-    eventEmitters.delete(channelId);
+      eventEmitters.delete(channelId);
+    }
 
     return res.status(204).send();
   } catch (err) {
@@ -121,6 +132,13 @@ app.delete("/channel/:channelId", async (req, res) => {
 app.get("/events/:channelId", (req, res) => {
   if (req.headers.accept === "text/event-stream") {
     const channelId = req.params.channelId;
+
+    if (!channelId) {
+      console.error("Missing required channelId");
+      res.status(400).json({
+        msg: "Missing required argument channelId",
+      });
+    }
 
     res.writeHead(200, {
       "Content-Type": "text/event-stream",
@@ -167,19 +185,23 @@ app.get("/messages/:channelId", async (req, res) => {
   try {
     const channelId = req.params.channelId;
 
+    if (!channelId) {
+      console.error("Missing required channelId");
+      res.status(400).json({
+        msg: "Missing required argument channelId",
+      });
+    }
+
     const query = `
       SELECT *
       FROM messages
       WHERE channelId = $1
-      ORDER BY created_at ASC
-      LIMIT 20;
+      ORDER BY created_at DESC;
       `;
 
     const results = await pool.query(query, [channelId]);
 
-    return res
-      .status(200)
-      .json({ n: results.rows.length, messages: [...results.rows] });
+    return res.status(200).json({ messages: [...results.rows] });
   } catch (err) {
     console.error(err);
     return res.status(404).send(err);
@@ -189,6 +211,13 @@ app.get("/messages/:channelId", async (req, res) => {
 app.post("/message/:channelId", async (req, res) => {
   const channelId = req.params.channelId;
   const { content, username } = req.body;
+
+  if (!channelId || !content || !username) {
+    console.error("Missing required argument to post message");
+    res.status(400).json({
+      msg: "Missing required argument (channelId, content or username)",
+    });
+  }
 
   const query = `
     INSERT INTO messages (content, channelid, username)
